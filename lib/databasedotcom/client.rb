@@ -205,6 +205,11 @@ module Databasedotcom
       collection_from(result.body)
     end
 
+    def query_ot(soql_expr)
+      result = http_get("/services/data/v#{self.version}/query", :q => soql_expr)
+      collection_from_ot(result.body)
+    end
+
     # Returns a Collection of Sobject instances form the results of the SOSL[http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_calls_sosl.htm] search.
     #
     #    client.search("FIND {bar}") #=> [#<Account @Name="foobar", ...>, #<Account @Name="barfoo", ...> ...]
@@ -433,6 +438,11 @@ module Databasedotcom
       collection_from_hash( response )
     end
 
+    def collection_from_ot(response)
+      response = JSON.parse(response)
+      #collection_from_hash_ot( response )
+    end
+
     # Converts a Hash of object data into a concrete SObject
     def record_from_hash(data)
       attributes = data.delete('attributes')
@@ -466,6 +476,21 @@ module Databasedotcom
         records = data.collect { |rec| self.find(rec["attributes"]["type"], rec["Id"]) }
       else
         records = data["records"].collect do |record|
+          record_from_hash( record )
+        end
+      end
+
+      Databasedotcom::Collection.new(self, array_response ? records.length : data["totalSize"], array_response ? nil : data["nextRecordsUrl"]).concat(records)
+    end
+
+    def collection_from_hash_ot(data)
+      p data
+      array_response = data.is_a?(Array)
+      if array_response
+        records = data.collect { |rec| self.find(rec["attributes"]["type"], rec["Id"]) }
+      else
+        records = data["records"].collect do |record|
+          p record
           record_from_hash( record )
         end
       end
